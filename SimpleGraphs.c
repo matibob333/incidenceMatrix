@@ -48,11 +48,7 @@ IncidenceMatrix_init(IncidenceMatrixObject* self, PyObject* args, PyObject* kwds
         number = (number >> 1);
     }
 	
-	// temporary
 	self->matrix = NULL;
-    // for (int j = 0; j < 16; j++) {
-        // self->matrix[j] = 0;
-    // }
 
     int k = 0, i = 1, c;
     for (int v = 1; v < length; v++) {
@@ -66,9 +62,6 @@ IncidenceMatrix_init(IncidenceMatrixObject* self, PyObject* args, PyObject* kwds
             k--;
             unsigned short number = 0x8000;
             if ((c & (1 << k)) != 0) {
-                // unsigned short row = self->matrix[u];
-                // row = (row | (number >> v));
-                // self->matrix[u] = row;
 				ListElem* newEdge = calloc(1, sizeof(*newEdge));
 				if (!newEdge) return -1;
 				unsigned short vertex_1 = 0x8000 >> v;
@@ -118,26 +111,22 @@ static PyObject* vertices(IncidenceMatrixObject* self)
     return set;
 }
 
+static PyObject* number_of_edges(IncidenceMatrixObject* self)
+{
+    int counter = 0;
+
+    ListElem* edgePtr = self->matrix;
+    while (edgePtr) {
+        counter++;
+        edgePtr = edgePtr->nextElem;
+    }
+
+    return Py_BuildValue("i", counter);
+}
+
 static PyObject* edges(IncidenceMatrixObject* self)
 {
     PyObject* set = PySet_New(NULL);
-
-//    for (int i = 0; i < 16; i++) {
-//        unsigned short number = 0b1000000000000000;
-//        for (int j = 0; j < 16; j++) {
-//            unsigned short row = self->matrix[i];
-//            if ((row & number) == number) {
-//                if (i <= j)
-//                {
-//                    PyObject* python_int = Py_BuildValue("(ii)", i, j);
-//                    PySet_Add(set, python_int);
-//                    Py_DECREF(python_int);
-//                }
-//
-//            }
-//            number = number >> 1;
-//        }
-//    }
 
     ListElem* edgePtr = self->matrix;
     while (edgePtr) {
@@ -160,6 +149,23 @@ static PyObject* edges(IncidenceMatrixObject* self)
     return set;
 }
 
+static PyObject* is_edge(IncidenceMatrixObject* self, PyObject* vertices)
+{
+    int u, v;
+    if (!PyArg_ParseTuple(vertices, "ii", &u, &v))
+        return NULL;
+
+    ListElem* edgePtr = self->matrix;
+    while (edgePtr) {
+        unsigned short edge = edgePtr->edge;
+        if ((edge & (0x8000 >> u)) != 0 && (edge & (0x8000 >> v)) != 0) {
+            Py_RETURN_TRUE;
+        }
+        edgePtr = edgePtr->nextElem;
+    }
+    Py_RETURN_FALSE;
+}
+
 static PyObject* add_vertex(IncidenceMatrixObject* self, PyObject* vertex)
 {
     int v;
@@ -177,9 +183,9 @@ static PyObject* add_vertex(IncidenceMatrixObject* self, PyObject* vertex)
 static PyMethodDef IncidenceMatrix_methods[] = {
 	{"number_of_vertices", (PyCFunction)number_of_vertices, METH_NOARGS, "Returns the number of vertices."},
     {"vertices", (PyCFunction)vertices, METH_NOARGS, "Returns the vertices."},
-    // {"number_of_edges", (PyCFunction)number_of_edges, METH_NOARGS, "Returns the number of edges."},
+    {"number_of_edges", (PyCFunction)number_of_edges, METH_NOARGS, "Returns the number of edges."},
     {"edges", (PyCFunction)edges, METH_NOARGS, "Returns the edges."},
-    // {"is_edge", (PyCFunction)is_edge, METH_VARARGS, "Returns the vertices are neighbours."},
+    {"is_edge", (PyCFunction)is_edge, METH_VARARGS, "Returns the vertices are neighbours."},
     // {"vertex_degree", (PyCFunction)vertex_degree, METH_VARARGS, "Returns the degree of vertex"},
     // {"vertex_neighbors", (PyCFunction)vertex_neighbors, METH_VARARGS, "Returns the neighbors of vertex"},
     // {"delete_vertex", (PyCFunction)delete_vertex, METH_VARARGS, "Delete vertex and incidental edges"},
