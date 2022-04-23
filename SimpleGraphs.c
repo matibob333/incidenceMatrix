@@ -180,6 +180,38 @@ static PyObject* add_vertex(IncidenceMatrixObject* self, PyObject* vertex)
     Py_RETURN_NONE;
 }
 
+static PyObject* add_edge(IncidenceMatrixObject* self, PyObject* vertices)
+{
+    int u, v;
+
+    if (!PyArg_ParseTuple(vertices, "ii", &u, &v))
+        Py_RETURN_NONE;
+
+    //potentially to remove - first, check if vertices exist
+    if ((self->vertices & (0x8000 >> u)) == 0 || (self->vertices & (0x8000 >> v)) == 0) {
+        Py_RETURN_NONE;
+    }
+
+    ListElem* edgePtr = self->matrix;
+    while (edgePtr) {
+        unsigned short edge = edgePtr->edge;
+        if ((edge & (0x8000 >> u)) != 0 && (edge & (0x8000 >> v)) != 0) {
+            Py_RETURN_NONE;
+        }
+        edgePtr = edgePtr->nextElem;
+    }
+
+    ListElem* newEdge = calloc(1, sizeof(*newEdge));
+    if (!newEdge) return -1;
+    unsigned short vertex_1 = 0x8000 >> v;
+    unsigned short vertex_2 = 0x8000 >> u;
+    newEdge->edge = newEdge->edge | vertex_1 | vertex_2;
+    newEdge->nextElem = self->matrix;
+    self->matrix = newEdge;
+
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef IncidenceMatrix_methods[] = {
 	{"number_of_vertices", (PyCFunction)number_of_vertices, METH_NOARGS, "Returns the number of vertices."},
     {"vertices", (PyCFunction)vertices, METH_NOARGS, "Returns the vertices."},
@@ -191,7 +223,7 @@ static PyMethodDef IncidenceMatrix_methods[] = {
     // {"delete_vertex", (PyCFunction)delete_vertex, METH_VARARGS, "Delete vertex and incidental edges"},
     {"add_vertex", (PyCFunction)add_vertex, METH_VARARGS, "Add vertex"},
     // {"delete_edge", (PyCFunction)delete_edge, METH_VARARGS, "Delete edge"},
-    // {"add_edge", (PyCFunction)add_edge, METH_VARARGS, "Add edge"},
+    {"add_edge", (PyCFunction)add_edge, METH_VARARGS, "Add edge"},
     // {"is_bipartite", (PyCFunction)is_bipartite, METH_NOARGS, "If is bipartite"},
     {NULL}
 };

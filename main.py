@@ -19,3 +19,19 @@ if __name__ == '__main__':
     print(g.is_edge(2, 0))
     print(g.is_edge(7, 3))
     print(g.is_edge(5, 9))
+
+    print("\n")
+    g.add_edge(10, 11)
+    print(g.number_of_edges())
+    print(g.edges())
+    g.add_edge(11, 2)
+    print(g.number_of_edges())
+    print(g.edges())
+    g.add_edge(7, 3)
+    print(g.number_of_edges())
+    print(g.edges())
+    g.add_edge(12, 0)
+    print(g.number_of_edges())
+    print(g.edges())
+
+
