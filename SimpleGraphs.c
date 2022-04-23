@@ -180,6 +180,39 @@ static PyObject* add_vertex(IncidenceMatrixObject* self, PyObject* vertex)
     Py_RETURN_NONE;
 }
 
+static PyObject* delete_edge(IncidenceMatrixObject* self, PyObject* vertices)
+{
+    int u, v;
+    unsigned short edge;
+
+    if (!PyArg_ParseTuple(vertices, "ii", &u, &v))
+        Py_RETURN_NONE;
+
+    ListElem* edgePtrEarlier = self->matrix;
+    if (!edgePtrEarlier) Py_RETURN_NONE;
+    edge = edgePtrEarlier->edge;
+    if ((edge & (0x8000 >> u)) != 0 && (edge & (0x8000 >> v)) != 0) {
+        self->matrix = edgePtrEarlier->nextElem;
+        free(edgePtrEarlier);
+        Py_RETURN_NONE;
+    }
+
+    ListElem* edgePtr = edgePtrEarlier->nextElem;
+    while (1) {
+        edge = edgePtr->edge;
+        if ((edge & (0x8000 >> u)) != 0 && (edge & (0x8000 >> v)) != 0) {
+            edgePtrEarlier->nextElem = edgePtr->nextElem;
+            free(edgePtr);
+            Py_RETURN_NONE;
+        }
+        edgePtrEarlier = edgePtrEarlier->nextElem;
+        edgePtr = edgePtr->nextElem;
+        if (!edgePtr) break;
+    }
+
+    Py_RETURN_NONE;
+}
+
 static PyObject* add_edge(IncidenceMatrixObject* self, PyObject* vertices)
 {
     int u, v;
@@ -222,7 +255,7 @@ static PyMethodDef IncidenceMatrix_methods[] = {
     // {"vertex_neighbors", (PyCFunction)vertex_neighbors, METH_VARARGS, "Returns the neighbors of vertex"},
     // {"delete_vertex", (PyCFunction)delete_vertex, METH_VARARGS, "Delete vertex and incidental edges"},
     {"add_vertex", (PyCFunction)add_vertex, METH_VARARGS, "Add vertex"},
-    // {"delete_edge", (PyCFunction)delete_edge, METH_VARARGS, "Delete edge"},
+    {"delete_edge", (PyCFunction)delete_edge, METH_VARARGS, "Delete edge"},
     {"add_edge", (PyCFunction)add_edge, METH_VARARGS, "Add edge"},
     // {"is_bipartite", (PyCFunction)is_bipartite, METH_NOARGS, "If is bipartite"},
     {NULL}
