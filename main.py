@@ -6,6 +6,8 @@ if __name__ == '__main__':
     # g = simple_graphs.IncidenceMatrix("@")
     print(g.number_of_vertices())
     print(g.vertices())
+    print(g.vertex_neighbors(1))
+    print(g.vertex_degree(1))
 
     g.add_vertex(12)
     print(g.number_of_vertices())

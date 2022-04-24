@@ -170,6 +170,56 @@ static PyObject* is_edge(IncidenceMatrixObject* self, PyObject* vertices)
     Py_RETURN_FALSE;
 }
 
+static PyObject* vertex_degree(IncidenceMatrixObject* self, PyObject* vertex)
+{
+    int v;
+    if (!PyArg_ParseTuple(vertex, "i", &v))
+        return NULL;
+
+    int counter = 0;
+
+    ListElem* edgePtr = self->matrix;
+    while (edgePtr) {
+        if ((edgePtr->edge & (0x8000 >> v)) != 0) {
+            counter++;
+        }
+        edgePtr = edgePtr->nextElem;
+    }
+
+    return Py_BuildValue("i", counter);
+}
+
+static PyObject* vertex_neighbors(IncidenceMatrixObject* self, PyObject* vertex)
+{
+    int v;
+    if (!PyArg_ParseTuple(vertex, "i", &v))
+        return NULL;
+    
+    PyObject* set = PySet_New(NULL);
+    
+    unsigned short number = 0x8000;
+    number = number >> v;
+    ListElem* edgePtr = self->matrix;
+    while (edgePtr) {
+        unsigned short test = edgePtr->edge & number;
+        if (test) {
+            test = (~test) & edgePtr->edge;
+            unsigned short index = 0x8000;
+            for (int i = 0; i < 16; i++) {
+                if ((index >> i) & test) {
+                    PyObject* python_int = Py_BuildValue("i", i);
+                    PySet_Add(set, python_int);
+                    Py_DECREF(python_int);
+                    break;
+                }
+            }
+        }
+        edgePtr = edgePtr->nextElem;
+    }
+
+    return set;
+}
+
 static PyObject* delete_vertex(IncidenceMatrixObject* self, PyObject* vertex)
 {
     int v;
@@ -284,8 +334,8 @@ static PyMethodDef IncidenceMatrix_methods[] = {
     {"number_of_edges", (PyCFunction)number_of_edges, METH_NOARGS, "Returns the number of edges."},
     {"edges", (PyCFunction)edges, METH_NOARGS, "Returns the edges."},
     {"is_edge", (PyCFunction)is_edge, METH_VARARGS, "Returns the vertices are neighbours."},
-    // {"vertex_degree", (PyCFunction)vertex_degree, METH_VARARGS, "Returns the degree of vertex"},
-    // {"vertex_neighbors", (PyCFunction)vertex_neighbors, METH_VARARGS, "Returns the neighbors of vertex"},
+    {"vertex_degree", (PyCFunction)vertex_degree, METH_VARARGS, "Returns the degree of vertex"},
+    {"vertex_neighbors", (PyCFunction)vertex_neighbors, METH_VARARGS, "Returns the neighbors of vertex"},
     {"delete_vertex", (PyCFunction)delete_vertex, METH_VARARGS, "Delete vertex and incidental edges"},
     {"add_vertex", (PyCFunction)add_vertex, METH_VARARGS, "Add vertex"},
     {"delete_edge", (PyCFunction)delete_edge, METH_VARARGS, "Delete edge"},
