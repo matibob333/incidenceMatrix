@@ -328,6 +328,42 @@ static PyObject* add_edge(IncidenceMatrixObject* self, PyObject* vertices)
     Py_RETURN_NONE;
 }
 
+static PyObject* create_path(PyTypeObject* type, PyObject* vertices)
+{
+    int v;
+    if (!PyArg_ParseTuple(vertices, "i", &v))
+        Py_RETURN_NONE;
+    if (v > 16) v = 16;
+
+    IncidenceMatrixObject* object;
+    object = (IncidenceMatrixObject*)type->tp_alloc(type, 0);
+
+    unsigned short number = 0x8000;
+    object->vertices = 0;
+    for (int i = 0; i < v; i++) {
+        object->vertices = (object->vertices | number);
+        number = (number >> 1);
+    }
+
+    object->matrix = NULL;
+    number = 0xC000;
+    for (int i = 1; i < v; i++) {
+        ListElem* newEdge = calloc(1, sizeof(*newEdge));
+        if (!newEdge) Py_RETURN_NONE;
+        newEdge->edge = number;
+        number = number >> 1;
+        newEdge->nextElem = object->matrix;
+        newEdge->prevElem = NULL;
+        if (newEdge->nextElem) {
+            newEdge->nextElem->prevElem = newEdge;
+        }
+        object->matrix = newEdge;
+    }
+
+    return (PyObject*)object;
+
+}
+
 static PyMethodDef IncidenceMatrix_methods[] = {
 	{"number_of_vertices", (PyCFunction)number_of_vertices, METH_NOARGS, "Returns the number of vertices."},
     {"vertices", (PyCFunction)vertices, METH_NOARGS, "Returns the vertices."},
@@ -340,7 +376,7 @@ static PyMethodDef IncidenceMatrix_methods[] = {
     {"add_vertex", (PyCFunction)add_vertex, METH_VARARGS, "Add vertex"},
     {"delete_edge", (PyCFunction)delete_edge, METH_VARARGS, "Delete edge"},
     {"add_edge", (PyCFunction)add_edge, METH_VARARGS, "Add edge"},
-    // {"is_bipartite", (PyCFunction)is_bipartite, METH_NOARGS, "If is bipartite"},
+    {"create_path", (PyCFunction)create_path, METH_VARARGS | METH_CLASS, "Create path"},
     {NULL}
 };
 
