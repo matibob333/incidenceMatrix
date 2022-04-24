@@ -3,8 +3,9 @@
 #include "structmember.h"
 
 typedef struct ListElemStruct {
-	unsigned short edge;
-	struct ListElemStruct* nextElem;
+    unsigned short edge;
+    struct ListElemStruct* nextElem;
+    struct ListElemStruct* prevElem;
 } ListElem;
 
 typedef struct {
@@ -47,14 +48,13 @@ IncidenceMatrix_init(IncidenceMatrixObject* self, PyObject* args, PyObject* kwds
         self->vertices = (self->vertices | number);
         number = (number >> 1);
     }
-	
-	self->matrix = NULL;
+    
+    self->matrix = NULL;
 
     int k = 0, i = 1, c;
     for (int v = 1; v < length; v++) {
         for (int u = 0; u < v; u++) {
             if (k == 0) {
-
                 c = (int)text[i] - 63;
                 i++;
                 k = 6;
@@ -62,13 +62,17 @@ IncidenceMatrix_init(IncidenceMatrixObject* self, PyObject* args, PyObject* kwds
             k--;
             unsigned short number = 0x8000;
             if ((c & (1 << k)) != 0) {
-				ListElem* newEdge = calloc(1, sizeof(*newEdge));
-				if (!newEdge) return -1;
-				unsigned short vertex_1 = 0x8000 >> v;
-				unsigned short vertex_2 = 0x8000 >> u;
-				newEdge->edge = newEdge->edge | vertex_1 | vertex_2;
+                ListElem* newEdge = calloc(1, sizeof(*newEdge));
+                if (!newEdge) return -1;
+                unsigned short vertex_1 = 0x8000 >> v;
+                unsigned short vertex_2 = 0x8000 >> u;
+                newEdge->edge = newEdge->edge | vertex_1 | vertex_2;
 				newEdge->nextElem = self->matrix;
-				self->matrix = newEdge;
+                newEdge->prevElem = NULL;
+                if (newEdge->nextElem) {
+                    newEdge->nextElem->prevElem = newEdge;
+                }
+                self->matrix = newEdge;
             }
         }
     }
@@ -169,7 +173,6 @@ static PyObject* is_edge(IncidenceMatrixObject* self, PyObject* vertices)
 static PyObject* delete_vertex(IncidenceMatrixObject* self, PyObject* vertex)
 {
     int v;
-
     if (!PyArg_ParseTuple(vertex, "i", &v))
         Py_RETURN_NONE;
 
@@ -177,42 +180,32 @@ static PyObject* delete_vertex(IncidenceMatrixObject* self, PyObject* vertex)
     number = number >> v;
     self->vertices = self->vertices & (~number);
 
-    unsigned short edge;
-    ListElem* edgePtrEarlier;
-
-    while (1) {
-        edgePtrEarlier = self->matrix;
-        if (!edgePtrEarlier) Py_RETURN_NONE;
-        edge = edgePtrEarlier->edge;
-        if ((edge & number) != 0) {
-            self->matrix = edgePtrEarlier->nextElem;
-            free(edgePtrEarlier);
-        }
-        else break;
-    } 
-    
-    ListElem* edgePtr = edgePtrEarlier->nextElem;
-    if (!edgePtr) Py_RETURN_NONE;
-    while (1) {
-        edge = edgePtr->edge;
-        if ((edge & number) != 0) {
-            edgePtrEarlier->nextElem = edgePtr->nextElem;
-            free(edgePtr);
-            edgePtr = edgePtrEarlier->nextElem;
-            if (!edgePtr) break;
+    ListElem* edgePtr = self->matrix;
+    while (edgePtr) {
+        if ((edgePtr->edge & number) != 0) {
+            if (edgePtr->nextElem) {
+                edgePtr->nextElem->prevElem = edgePtr->prevElem;
+            }
+            if (edgePtr->prevElem) {
+                edgePtr->prevElem->nextElem = edgePtr->nextElem;
+            }
+            else {
+                self->matrix = edgePtr->nextElem;
+            }
+            ListElem* edgePtrRm = edgePtr;
+            edgePtr = edgePtr->nextElem;
+            free(edgePtrRm);
             continue;
         }
-        edgePtrEarlier = edgePtrEarlier->nextElem;
         edgePtr = edgePtr->nextElem;
-        if (!edgePtr) break;
     }
+
     Py_RETURN_NONE;
 }
 
 static PyObject* add_vertex(IncidenceMatrixObject* self, PyObject* vertex)
 {
     int v;
-
     if (!PyArg_ParseTuple(vertex, "i", &v))
         Py_RETURN_NONE;
 
@@ -226,30 +219,24 @@ static PyObject* add_vertex(IncidenceMatrixObject* self, PyObject* vertex)
 static PyObject* delete_edge(IncidenceMatrixObject* self, PyObject* vertices)
 {
     int u, v;
-    unsigned short edge;
-
     if (!PyArg_ParseTuple(vertices, "ii", &u, &v))
         Py_RETURN_NONE;
 
-    ListElem* edgePtrEarlier = self->matrix;
-    if (!edgePtrEarlier) Py_RETURN_NONE;
-    edge = edgePtrEarlier->edge;
-    if ((edge & (0x8000 >> u)) != 0 && (edge & (0x8000 >> v)) != 0) {
-        self->matrix = edgePtrEarlier->nextElem;
-        free(edgePtrEarlier);
-        Py_RETURN_NONE;
-    }
-
-    ListElem* edgePtr = edgePtrEarlier->nextElem;
-    while (1) {
-        if (!edgePtr) break;
-        edge = edgePtr->edge;
-        if ((edge & (0x8000 >> u)) != 0 && (edge & (0x8000 >> v)) != 0) {
-            edgePtrEarlier->nextElem = edgePtr->nextElem;
+    ListElem* edgePtr = self->matrix;
+    while (edgePtr) {
+        if ((edgePtr->edge & (0x8000 >> u)) != 0 && (edgePtr->edge & (0x8000 >> v)) != 0) {
+            if (edgePtr->nextElem) {
+                edgePtr->nextElem->prevElem = edgePtr->prevElem;
+            }
+            if (edgePtr->prevElem) {
+                edgePtr->prevElem->nextElem = edgePtr->nextElem;
+            }
+            else {
+                self->matrix = edgePtr->nextElem;
+            }
             free(edgePtr);
             Py_RETURN_NONE;
         }
-        edgePtrEarlier = edgePtrEarlier->nextElem;
         edgePtr = edgePtr->nextElem;
     }
 
@@ -259,7 +246,6 @@ static PyObject* delete_edge(IncidenceMatrixObject* self, PyObject* vertices)
 static PyObject* add_edge(IncidenceMatrixObject* self, PyObject* vertices)
 {
     int u, v;
-
     if (!PyArg_ParseTuple(vertices, "ii", &u, &v))
         Py_RETURN_NONE;
 
@@ -283,6 +269,10 @@ static PyObject* add_edge(IncidenceMatrixObject* self, PyObject* vertices)
     unsigned short vertex_2 = 0x8000 >> u;
     newEdge->edge = newEdge->edge | vertex_1 | vertex_2;
     newEdge->nextElem = self->matrix;
+    newEdge->prevElem = NULL;
+    if (newEdge->nextElem) {
+        newEdge->nextElem->prevElem = newEdge;
+    }
     self->matrix = newEdge;
 
     Py_RETURN_NONE;
