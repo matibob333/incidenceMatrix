@@ -20,7 +20,7 @@ if __name__ == '__main__':
     print(g.is_edge(7, 3))
     print(g.is_edge(5, 9))
 
-    print("\n")
+    print("\ndeleting edges")
     g.delete_edge(0, 5)
     print(g.number_of_edges())
     print(g.edges())
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     print(g.number_of_edges())
     print(g.edges())
 
-    print("\n")
+    print("\nadding edges")
     g.add_edge(10, 11)
     print(g.number_of_edges())
     print(g.edges())
@@ -39,6 +39,19 @@ if __name__ == '__main__':
     print(g.number_of_edges())
     print(g.edges())
     g.add_edge(12, 0)
+    print(g.number_of_edges())
+    print(g.edges())
+
+    print("\ndeleting vertices")
+    print("before deletion")
+    print(g.number_of_vertices())
+    print(g.vertices())
+    print(g.number_of_edges())
+    print(g.edges())
+    g.delete_vertex(1)
+    print("after deletion")
+    print(g.number_of_vertices())
+    print(g.vertices())
     print(g.number_of_edges())
     print(g.edges())
 

@@ -166,6 +166,49 @@ static PyObject* is_edge(IncidenceMatrixObject* self, PyObject* vertices)
     Py_RETURN_FALSE;
 }
 
+static PyObject* delete_vertex(IncidenceMatrixObject* self, PyObject* vertex)
+{
+    int v;
+
+    if (!PyArg_ParseTuple(vertex, "i", &v))
+        Py_RETURN_NONE;
+
+    unsigned short number = 0x8000;
+    number = number >> v;
+    self->vertices = self->vertices & (~number);
+
+    unsigned short edge;
+    ListElem* edgePtrEarlier;
+
+    while (1) {
+        edgePtrEarlier = self->matrix;
+        if (!edgePtrEarlier) Py_RETURN_NONE;
+        edge = edgePtrEarlier->edge;
+        if ((edge & number) != 0) {
+            self->matrix = edgePtrEarlier->nextElem;
+            free(edgePtrEarlier);
+        }
+        else break;
+    } 
+    
+    ListElem* edgePtr = edgePtrEarlier->nextElem;
+    if (!edgePtr) Py_RETURN_NONE;
+    while (1) {
+        edge = edgePtr->edge;
+        if ((edge & number) != 0) {
+            edgePtrEarlier->nextElem = edgePtr->nextElem;
+            free(edgePtr);
+            edgePtr = edgePtrEarlier->nextElem;
+            if (!edgePtr) break;
+            continue;
+        }
+        edgePtrEarlier = edgePtrEarlier->nextElem;
+        edgePtr = edgePtr->nextElem;
+        if (!edgePtr) break;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* add_vertex(IncidenceMatrixObject* self, PyObject* vertex)
 {
     int v;
@@ -199,6 +242,7 @@ static PyObject* delete_edge(IncidenceMatrixObject* self, PyObject* vertices)
 
     ListElem* edgePtr = edgePtrEarlier->nextElem;
     while (1) {
+        if (!edgePtr) break;
         edge = edgePtr->edge;
         if ((edge & (0x8000 >> u)) != 0 && (edge & (0x8000 >> v)) != 0) {
             edgePtrEarlier->nextElem = edgePtr->nextElem;
@@ -207,7 +251,6 @@ static PyObject* delete_edge(IncidenceMatrixObject* self, PyObject* vertices)
         }
         edgePtrEarlier = edgePtrEarlier->nextElem;
         edgePtr = edgePtr->nextElem;
-        if (!edgePtr) break;
     }
 
     Py_RETURN_NONE;
@@ -235,7 +278,7 @@ static PyObject* add_edge(IncidenceMatrixObject* self, PyObject* vertices)
     }
 
     ListElem* newEdge = calloc(1, sizeof(*newEdge));
-    if (!newEdge) return -1;
+    if (!newEdge) Py_RETURN_FALSE;
     unsigned short vertex_1 = 0x8000 >> v;
     unsigned short vertex_2 = 0x8000 >> u;
     newEdge->edge = newEdge->edge | vertex_1 | vertex_2;
@@ -253,7 +296,7 @@ static PyMethodDef IncidenceMatrix_methods[] = {
     {"is_edge", (PyCFunction)is_edge, METH_VARARGS, "Returns the vertices are neighbours."},
     // {"vertex_degree", (PyCFunction)vertex_degree, METH_VARARGS, "Returns the degree of vertex"},
     // {"vertex_neighbors", (PyCFunction)vertex_neighbors, METH_VARARGS, "Returns the neighbors of vertex"},
-    // {"delete_vertex", (PyCFunction)delete_vertex, METH_VARARGS, "Delete vertex and incidental edges"},
+    {"delete_vertex", (PyCFunction)delete_vertex, METH_VARARGS, "Delete vertex and incidental edges"},
     {"add_vertex", (PyCFunction)add_vertex, METH_VARARGS, "Add vertex"},
     {"delete_edge", (PyCFunction)delete_edge, METH_VARARGS, "Delete edge"},
     {"add_edge", (PyCFunction)add_edge, METH_VARARGS, "Add edge"},
